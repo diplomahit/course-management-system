@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教务管理系统</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', sans-serif; background: #f5f5f5; }
+        
+        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 0 20px; height: 60px; display: flex; align-items: center; position: fixed; top: 0; left: 0; right: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .navbar h1 { font-size: 20px; font-weight: 500; }
+        .nav-menu { display: flex; margin-left: 50px; }
+        .nav-item { padding: 0 20px; height: 60px; line-height: 60px; cursor: pointer; transition: background 0.3s; border-bottom: 3px solid transparent; }
+        .nav-item:hover { background: rgba(255,255,255,0.1); }
+        .nav-item.active { background: rgba(255,255,255,0.2); border-bottom-color: white; }
+        .user-info { margin-left: auto; display: flex; align-items: center; gap: 15px; }
+        .username-link { cursor: pointer; padding: 5px 10px; border-radius: 4px; transition: all 0.3s; }
+        .username-link:hover { background: rgba(255,255,255,0.2); }
+        .logout-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        .logout-btn:hover { background: rgba(255,255,255,0.3); }
+        
+        .sidebar { position: fixed; left: 0; top: 60px; bottom: 0; width: 220px; background: white; box-shadow: 2px 0 10px rgba(0,0,0,0.05); overflow-y: auto; }
+        .sidebar-title { padding: 15px 20px; font-size: 14px; color: #999; border-bottom: 1px solid #eee; }
+        .sidebar-menu { padding: 10px 0; }
+        .menu-item { padding: 12px 20px 12px 40px; cursor: pointer; transition: all 0.3s; color: #333; }
+        .menu-item:hover { background: #f5f5f5; color: #667eea; }
+        .menu-item.active { background: #f0f2ff; color: #667eea; border-right: 3px solid #667eea; }
+        
+        .main-content { margin-left: 220px; margin-top: 60px; padding: 20px; min-height: calc(100vh - 60px); }
+        
+        .card { background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .card-header { padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .card-header h3 { font-size: 16px; font-weight: 500; }
+        .card-body { padding: 20px; }
+        
+        .toolbar { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .search-input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; width: 200px; }
+        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; transition: all 0.3s; }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { background: #5a6fd6; }
+        .btn-success { background: #52c41a; color: white; }
+        .btn-danger { background: #ff4d4f; color: white; }
+        .btn-warning { background: #faad14; color: white; }
+        .btn-info { background: #1890ff; color: white; }
+        .btn-sm { padding: 4px 8px; font-size: 12px; }
+        
+        .table { width: 100%; border-collapse: collapse; }
+        .table th, .table td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        .table th { background: #fafafa; font-weight: 500; color: #666; }
+        .table tr:hover { background: #f5f5f5; }
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+        .modal { background: white; border-radius: 8px; width: 600px; max-height: 80vh; overflow-y: auto; }
+        .modal-header { padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .modal-header h3 { font-size: 16px; font-weight: 500; }
+        .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #999; }
+        .modal-body { padding: 20px; }
+        .modal-footer { padding: 15px 20px; border-top: 1px solid #eee; text-align: right; }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; color: #333; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; }
+        .form-row { display: flex; gap: 15px; }
+        .form-row .form-group { flex: 1; }
+        
+        .action-btns { display: flex; gap: 5px; }
+        
+        .permission-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .permission-item { padding: 10px; background: #f5f5f5; border-radius: 4px; display: flex; align-items: center; }
+        .permission-item input { margin-right: 8px; }
+        
+        .status-tag { padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+        .status-active { background: #e6f7e6; color: #52c41a; }
+        .status-inactive { background: #fff2e8; color: #fa8c16; }
+        
+        .stats-card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; display: flex; gap: 30px; }
+        .stat-item { text-align: center; }
+        .stat-value { font-size: 28px; font-weight: bold; color: #667eea; }
+        .stat-label { font-size: 14px; color: #999; margin-top: 5px; }
+        
+        .empty-tip { text-align: center; padding: 40px; color: #999; }
+        
+        .badge { padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 5px; }
+        .badge-primary { background: #e6f0ff; color: #667eea; }
+        .badge-success { background: #e6f7e6; color: #52c41a; }
+        .badge-warning { background: #fffbe6; color: #d4a017; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 顶部导航 -->
+        <div class="navbar">
+            <h1>🎓 教务管理系统</h1>
+            <div class="nav-menu">
+                <div class="nav-item" :class="{active: nav === 'student'}" @click="setNav('student')">学生管理</div>
+                <div class="nav-item" :class="{active: nav === 'teacher'}" @click="setNav('teacher')">老师管理</div>
+                <div class="nav-item" :class="{active: nav === 'course'}" @click="setNav('course')">课程管理</div>
+                <div class="nav-item" :class="{active: nav === 'selection'}" @click="setNav('selection')">选课管理</div>
+                <div class="nav-item" :class="{active: nav === 'system'}" @click="setNav('system')" v-if="isAdmin">⚙️ 系统管理</div>
+            </div>
+            <div class="user-info">
+                <span class="username-link" @click="showProfile" title="点击查看个人信息">👤 {{ currentUser }}</span>
+                <button class="logout-btn" @click="logout">退出</button>
+            </div>
+        </div>
+        
+        <!-- 侧边栏 -->
+        <div class="sidebar">
+            <div class="sidebar-title">{{ sidebarTitle }}</div>
+            <div class="sidebar-menu">
+                <div v-for="item in sidebarItems" :key="item.key" 
+                     class="menu-item" :class="{active: currentMenu === item.key}"
+                     @click="setMenu(item.key)">
+                    {{ item.name }}
+                </div>
+            </div>
+        </div>
+        
+        <!-- 主内容区 -->
+        <div class="main-content">
+            <!-- ==================== 学生管理 ==================== -->
+            <!-- 学生基本信息管理 -->
+            <div class="card" v-if="currentMenu === 'student-list'">
+                <div class="card-header">
+                    <h3>学生基本信息管理</h3>
+                    <button class="btn btn-primary" @click="openAddStudentModal">+ 添加学生</button>
+                </div>
+                <div class="card-body">
+                    <div class="toolbar">
+                        <input class="search-input" v-model="search.student" placeholder="搜索学号/姓名..." @keyup.enter="searchStudents">
+                        <button class="btn btn-primary" @click="searchStudents">搜索</button>
+                    </div>
+                    <table class="table">
+                        <thead><tr><th>学号</th><th>姓名</th><th>性别</th><th>班级</th><th>专业</th><th>联系电话</th><th>操作</th></tr></thead>
+                        <tbody>
+                            <tr v-for="item in studentList" :key="item.id">
+                                <td>{{ item.studentNo }}</td>
+                                <td>{{ item.name }}</td>
+                                <td>{{ item.gender }}</td>
+                                <td>{{ item.className }}</td>
+                                <td>{{ item.major }}</td>
+                                <td>{{ item.phone }}</td>
+                                <td class="action-btns">
+                                    <button class="btn btn-warning btn-sm" @click="openEditStudentModal(item)">编辑</button>
+                                    <button class="btn btn-danger btn-sm" @click="deleteStudent(item.id)">删除</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- 学生已选课程 -->
+            <div class="card" v-if="currentMenu === 'student-courses'">
+                <div class="card-header">
+                    <h3>学生已选课程</h3>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>选择学生查看已选课程</label>
+                        <select v-model="selectedStudentId" @change="loadStudentCourses">
+                            <option value="">-- 选择学生 --</option>
+                            <option v-for="s in studentList" :key="s.id" :value="s.id">{{ s.name }} ({{ s.studentNo }})</option>
+                        </select>
+                    </div>
+                    <div v-if="selectedStudentId">
+                        <table class="table">
+                            <thead><tr><th>课程代码</th><th>课程名称</th><th>授课老师</th><th>学分</th><th>上课时间</th><th>上课地点</th><th>选课状态</th></tr></thead>
+                            <tbody>
+                                <tr v-for="item in studentCourseList" :key="item.id">
+                                    <td>{{ item.courseCode }}</td>
+                                    <td>{{ item.courseName }}</td>
+                                    <td>{{ item.teacherName }}</td>
+                                    <td>{{ item.credit }}</td>
+                                    <td>{{ item.schedule }}</td>
+                                    <td>{{ item.location }}</td>
+                                    <td><span class="status-tag status-active">{{ item.status }}</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div v-if="studentCourseList.length === 0" class="empty-tip">该学生暂未选课</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ==================== 老师管理 ==================== -->
+            <!-- 老师基本信息管理 -->
+            <div class="card" v-if="currentMenu === 'teacher-list'">
+                <div class="card-header">
+                    <h3>老师基本信息管理</h3>
+                    <button class="btn btn-primary" @click="openAddTeacherModal">+ 添加老师</button>
+                </div>
+                <div class="card-body">
+                    <div class="toolbar">
+                        <input class="search-input" v-model="search.teacher" placeholder="搜索工号/姓名..." @keyup.enter="searchTeachers">
+                        <button class="btn btn-primary" @click="searchTeachers">搜索</button>
+                    </div>
+                    <table class="table">
+                        <thead><tr><th>工号</th><th>姓名</th><th>性别</th><th>职称</th><th>所属院系</th><th>联系电话</th><th>操作</th></tr></thead>
+                        <tbody>
+                            <tr v-for="item in teacherList" :key="item.id">
+                                <td>{{ item.teacherNo }}</td>
+                                <td>{{ item.name }}</td>
+                                <td>{{ item.gender }}</td>
+                                <td>{{ item.title }}</td>
+                                <td>{{ item.department }}</td>
+                                <td>{{ item.phone }}</td>
+                                <td class="action-btns">
+                                    <button class="btn btn-warning btn-sm" @click="openEditTeacherModal(item)">编辑</button>
+                                    <button class="btn btn-danger btn-sm" @click="deleteTeacher(item.id)">删除</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- 教授课程管理 -->
+            <div class="card" v-if="currentMenu === 'teacher-courses'">
+                <div class="card-header">
+                    <h3>教授课程管理</h3>
+                    <button class="btn btn-primary" @click="openAssignCourseModal" v-if="selectedTeacherId">+ 分配课程</button>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>选择老师查看授课情况</label>
+                        <select v-model="selectedTeacherId" @change="loadTeacherCourses">
+                            <option value="">-- 选择老师 --</option>
+                            <option v-for="t in teacherList" :key="t.id" :value="t.id">{{ t.name }} ({{ t.teacherNo }})</option>
+                        </select>
+                    </div>
+                    <div v-if="selectedTeacherId">
+                        <table class="table">
+                            <thead><tr><th>课程代码</th><th>课程名称</th><th>学分</th><th>学时</th><th>上课时间</th><th>上课地点</th><th>已选人数</th><th>操作</th></tr></thead>
+                            <tbody>
+                                <tr v-for="item in teacherCourseList" :key="item.id">
+                                    <td>{{ item.courseCode }}</td>
+                                    <td>{{ item.courseName }}</td>
+                                    <td>{{ item.credit }}</td>
+                                    <td>{{ item.hours }}</td>
+                                    <td>{{ item.schedule }}</td>
+                                    <td>{{ item.location }}</td>
+                                    <td>{{ item.selectedCount || 0 }}/{{ item.maxStudents }}</td>
+                                    <td class="action-btns">
+                                        <button class="btn btn-danger btn-sm" @click="removeTeacherCourse(item.id)">移除</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div v-if="teacherCourseList.length === 0" class="empty-tip">该老师暂未分配课程</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ==================== 课程管理 ==================== -->
+            <!-- 课程维护管理 -->
+            <div class="card" v-if="currentMenu === 'course-list'">
+                <div class="card-header">
+                    <h3>课程维护管理</h3>
+                    <button class="btn btn-primary" @click="openAddCourseModal">+ 添加课程</button>
+                </div>
+                <div class="card-body">
+                    <div class="toolbar">
+                        <input class="search-input" v-model="search.course" placeholder="搜索课程代码/名称..." @keyup.enter="searchCourses">
+                        <button class="btn btn-primary" @click="searchCourses">搜索</button>
+                    </div>
+                    <table class="table">
+                        <thead><tr><th>课程代码</th><th>课程名称</th><th>学分</th><th>学时</th><th>课程类型</th><th>状态</th><th>操作</th></tr></thead>
+                        <tbody>
+                            <tr v-for="item in courseList" :key="item.id">
+                                <td>{{ item.courseCode }}</td>
+                                <td>{{ item.courseName }}</td>
+                                <td>{{ item.credit }}</td>
+                                <td>{{ item.hours }}</td>
+                                <td>{{ item.courseType }}</td>
+                                <td><span class="status-tag" :class="item.status === 'active' ? 'status-active' : 'status-inactive'">{{ item.status === 'active' ? '已开课' : '未开课' }}</span></td>
+                                <td class="action-btns">
+                                    <button class="btn btn-warning btn-sm" @click="openEditCourseModal(item)">编辑</button>
+                                    <button class="btn btn-danger btn-sm" @click="deleteCourse(item.id)">删除</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- ==================== 选课管理 ==================== -->
+            <!-- 学生选课管理 -->
+            <div class="card" v-if="currentMenu === 'selection-list'">
+                <div class="card-header">
+                    <h3>学生选课管理</h3>
+                    <button class="btn btn-primary" @click="openAddSelectionModal">+ 添加选课记录</button>
+                </div>
+                <div class="card-body">
+                    <div class="toolbar">
+                        <input class="search-input" v-model="search.selection" placeholder="搜索学生姓名/课程名称..." @keyup.enter="searchSelections">
+                        <button class="btn btn-primary" @click="searchSelections">搜索</button>
+                        <button class="btn btn-info" @click="loadSelections">刷新</button>
+                    </div>
+                    <table class="table">
+                        <thead><tr><th>学生姓名</th><th>学号</th><th>课程名称</th><th>授课老师</th><th>学分</th><th>选课时间</th><th>状态</th><th>操作</th></tr></thead>
+                        <tbody>
+                            <tr v-for="item in selectionList" :key="item.id">
+                                <td>{{ item.studentName }}</td>
+                                <td>{{ item.studentNo }}</td>
+                                <td>{{ item.courseName }}</td>
+                                <td>{{ item.teacherName }}</td>
+                                <td>{{ item.credit }}</td>
+                                <td>{{ item.selectionTime }}</td>
+                                <td><span class="status-tag" :class="item.status === 'selected' ? 'status-active' : 'status-inactive'">{{ item.status === 'selected' ? '已选课' : '已退选' }}</span></td>
+                                <td class="action-btns">
+                                    <button class="btn btn-danger btn-sm" @click="cancelSelection(item.id)" v-if="item.status === 'selected'">退选</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- ==================== 系统管理 ==================== -->
+            <!-- 用户管理 -->
+            <div class="card" v-if="currentMenu === 'user-list'">
+                <div class="card-header">
+                    <h3>用户管理</h3>
+                    <button class="btn btn-primary" @click="openAddUserModal">+ 添加用户</button>
+                </div>
+                <div class="card-body">
+                    <div class="toolbar">
+                        <input class="search-input" v-model="search.user" placeholder="搜索用户名/昵称..." @keyup.enter="searchUsers">
+                        <button class="btn btn-primary" @click="searchUsers">搜索</button>
+                    </div>
+                    <table class="table">
+                        <thead><tr><th>用户名</th><th>昵称</th><th>用户类型</th><th>角色</th><th>状态</th><th>操作</th></tr></thead>
+                        <tbody>
+                            <tr v-for="item in userList" :key="item.id">
+                                <td>{{ item.username }}</td><td>{{ item.nickname }}</td>
+                                <td>{{ getUserTypeText(item.userType) }}</td><td>{{ item.role }}</td>
+                                <td><span class="status-tag" :class="item.status === 'active' ? 'status-active' : 'status-inactive'">{{ item.status }}</span></td>
+                                <td class="action-btns">
+                                    <button class="btn btn-warning btn-sm" @click="openEditUserModal(item)">编辑</button>
+                                    <button class="btn btn-danger btn-sm" @click="deleteUser(item.id)">删除</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- 角色管理 -->
+            <div class="card" v-if="currentMenu === 'role-list'">
+                <div class="card-header">
+                    <h3>角色管理</h3>
+                    <button class="btn btn-primary" @click="openAddRoleModal">+ 添加角色</button>
+                </div>
+                <div class="card-body">
+                    <div class="toolbar">
+                        <input class="search-input" v-model="search.role" placeholder="搜索角色名称..." @keyup.enter="searchRoles">
+                        <button class="btn btn-primary" @click="searchRoles">搜索</button>
+                    </div>
+                    <table class="table">
+                        <thead><tr><th>角色代码</th><th>角色名称</th><th>描述</th><th>状态</th><th>操作</th></tr></thead>
+                        <tbody>
+                            <tr v-for="item in roleList" :key="item.id">
+                                <td>{{ item.roleCode }}</td><td>{{ item.roleName }}</td>
+                                <td>{{ item.description }}</td><td><span class="status-tag status-active">{{ item.status }}</span></td>
+                                <td class="action-btns">
+                                    <button class="btn btn-warning btn-sm" @click="openEditRoleModal(item)">编辑</button>
+                                    <button class="btn btn-danger btn-sm" @click="deleteRole(item.id)">删除</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- 角色权限管理 -->
+            <div class="card" v-if="currentMenu === 'role-permission'">
+                <div class="card-header">
+                    <h3>角色权限管理</h3>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>选择角色</label>
+                        <select v-model="selectedRoleId" @change="loadRolePermissions">
+                            <option value="">-- 选择角色 --</option>
+                            <option v-for="r in roleList" :key="r.id" :value="r.id">{{ r.roleName }}</option>
+                        </select>
+                    </div>
+                    
+                    <div v-if="selectedRoleId" class="card">
+                        <div class="card-header">
+                            <h3>权限配置</h3>
+                            <button class="btn btn-primary" @click="saveRolePermissions">保存权限</button>
+                        </div>
+                        <div class="card-body">
+                            <div class="permission-list">
+                                <div v-for="perm in allPermissions" :key="perm.id" class="permission-item">
+                                    <input type="checkbox" :id="'perm_' + perm.id" v-model="selectedPermissions" :value="perm.id">
+                                    <label :for="'perm_' + perm.id">{{ perm.permissionName }}</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 用户权限管理 -->
+            <div class="card" v-if="currentMenu === 'user-permission'">
+                <div class="card-header">
+                    <h3>用户权限管理</h3>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>选择用户</label>
+                        <select v-model="selectedUserId" @change="loadUserPermissions">
+                            <option value="">-- 选择用户 --</option>
+                            <option v-for="u in userList" :key="u.id" :value="u.id">{{ u.nickname }} ({{ u.username }})</option>
+                        </select>
+                    </div>
+                    
+                    <div v-if="selectedUserId" class="card">
+                        <div class="card-header">
+                            <h3>权限配置</h3>
+                            <button class="btn btn-primary" @click="saveUserPermissions">保存权限</button>
+                        </div>
+                        <div class="card-body">
+                            <div class="permission-list">
+                                <div v-for="perm in allPermissions" :key="perm.id" class="permission-item">
+                                    <input type="checkbox" :id="'uperm_' + perm.id" v-model="selectedUserPermissions" :value="perm.id">
+                                    <label :for="'uperm_' + perm.id">{{ perm.permissionName }}</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ==================== 弹窗区域 ==================== -->
+        <!-- 学生编辑弹窗 -->
+        <div class="modal-overlay" v-if="showStudentModal" @click.self="closeStudentModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>{{ isEditStudent ? '编辑学生' : '添加学生' }}</h3>
+                    <button class="modal-close" @click="closeStudentModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>学号 *</label>
+                            <input v-model="studentForm.studentNo" placeholder="请输入学号">
+                        </div>
+                        <div class="form-group">
+                            <label>姓名 *</label>
+                            <input v-model="studentForm.name" placeholder="请输入姓名">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>性别</label>
+                            <select v-model="studentForm.gender">
+                                <option value="男">男</option>
+                                <option value="女">女</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>班级</label>
+                            <input v-model="studentForm.className" placeholder="请输入班级">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>专业</label>
+                            <input v-model="studentForm.major" placeholder="请输入专业">
+                        </div>
+                        <div class="form-group">
+                            <label>联系电话</label>
+                            <input v-model="studentForm.phone" placeholder="请输入联系电话">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>邮箱</label>
+                        <input v-model="studentForm.email" placeholder="请输入邮箱">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" @click="closeStudentModal">取消</button>
+                    <button class="btn btn-primary" @click="saveStudent">保存</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 老师编辑弹窗 -->
+        <div class="modal-overlay" v-if="showTeacherModal" @click.self="closeTeacherModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>{{ isEditTeacher ? '编辑老师' : '添加老师' }}</h3>
+                    <button class="modal-close" @click="closeTeacherModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>工号 *</label>
+                            <input v-model="teacherForm.teacherNo" placeholder="请输入工号">
+                        </div>
+                        <div class="form-group">
+                            <label>姓名 *</label>
+                            <input v-model="teacherForm.name" placeholder="请输入姓名">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>性别</label>
+                            <select v-model="teacherForm.gender">
+                                <option value="男">男</option>
+                                <option value="女">女</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>职称</label>
+                            <select v-model="teacherForm.title">
+                                <option value="教授">教授</option>
+                                <option value="副教授">副教授</option>
+                                <option value="讲师">讲师</option>
+                                <option value="助教">助教</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>所属院系</label>
+                            <input v-model="teacherForm.department" placeholder="请输入所属院系">
+                        </div>
+                        <div class="form-group">
+                            <label>联系电话</label>
+                            <input v-model="teacherForm.phone" placeholder="请输入联系电话">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>邮箱</label>
+                        <input v-model="teacherForm.email" placeholder="请输入邮箱">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" @click="closeTeacherModal">取消</button>
+                    <button class="btn btn-primary" @click="saveTeacher">保存</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 课程编辑弹窗 -->
+        <div class="modal-overlay" v-if="showCourseModal" @click.self="closeCourseModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>{{ isEditCourse ? '编辑课程' : '添加课程' }}</h3>
+                    <button class="modal-close" @click="closeCourseModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>课程代码 *</label>
+                            <input v-model="courseForm.courseCode" placeholder="请输入课程代码">
+                        </div>
+                        <div class="form-group">
+                            <label>课程名称 *</label>
+                            <input v-model="courseForm.courseName" placeholder="请输入课程名称">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>学分</label>
+                            <input type="number" v-model="courseForm.credit" placeholder="学分">
+                        </div>
+                        <div class="form-group">
+                            <label>学时</label>
+                            <input type="number" v-model="courseForm.hours" placeholder="学时">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>课程类型</label>
+                            <select v-model="courseForm.courseType">
+                                <option value="必修">必修</option>
+                                <option value="选修">选修</option>
+                                <option value="通识">通识</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>最大人数</label>
+                            <input type="number" v-model="courseForm.maxStudents" placeholder="最大选课人数">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>课程描述</label>
+                        <textarea v-model="courseForm.description" placeholder="请输入课程描述" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" @click="closeCourseModal">取消</button>
+                    <button class="btn btn-primary" @click="saveCourse">保存</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 选课弹窗 -->
+        <div class="modal-overlay" v-if="showSelectionModal" @click.self="closeSelectionModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>添加选课记录</h3>
+                    <button class="modal-close" @click="closeSelectionModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>选择学生 *</label>
+                        <select v-model="selectionForm.studentId">
+                            <option value="">-- 选择学生 --</option>
+                            <option v-for="s in studentList" :key="s.id" :value="s.id">{{ s.name }} ({{ s.studentNo }})</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>选择课程 *</label>
+                        <select v-model="selectionForm.teacherCourseId">
+                            <option value="">-- 选择课程 --</option>
+                            <option v-for="tc in allTeacherCourses" :key="tc.id" :value="tc.id">{{ tc.courseName }} - {{ tc.teacherName }} ({{ tc.schedule }})</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" @click="closeSelectionModal">取消</button>
+                    <button class="btn btn-primary" @click="saveSelection">保存</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 分配课程弹窗 -->
+        <div class="modal-overlay" v-if="showAssignModal" @click.self="closeAssignModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>为老师分配课程</h3>
+                    <button class="modal-close" @click="closeAssignModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>选择课程 *</label>
+                        <select v-model="assignForm.courseId">
+                            <option value="">-- 选择课程 --</option>
+                            <option v-for="c in courseList" :key="c.id" :value="c.id">{{ c.courseName }} ({{ c.courseCode }})</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>上课时间</label>
+                            <input v-model="assignForm.schedule" placeholder="如: 周一 1-2节">
+                        </div>
+                        <div class="form-group">
+                            <label>上课地点</label>
+                            <input v-model="assignForm.location" placeholder="如: 教学楼A101">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" @click="closeAssignModal">取消</button>
+                    <button class="btn btn-primary" @click="saveAssign">保存</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 用户编辑弹窗 -->
+        <div class="modal-overlay" v-if="showUserModal" @click.self="closeUserModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>{{ isEditUser ? '编辑用户' : '添加用户' }}</h3>
+                    <button class="modal-close" @click="closeUserModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>用户名</label>
+                        <input v-model="userForm.username" placeholder="请输入用户名" :disabled="isEditUser">
+                    </div>
+                    <div class="form-group" v-if="!isEditUser">
+                        <label>密码</label>
+                        <input type="password" v-model="userForm.password" placeholder="请输入密码">
+                    </div>
+                    <div class="form-group">
+                        <label>昵称</label>
+                        <input v-model="userForm.nickname" placeholder="请输入昵称">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>用户类型</label>
+                            <select v-model="userForm.userType" @change="onUserTypeChange">
+                                <option value="admin">管理员</option>
+                                <option value="student">学生</option>
+                                <option value="teacher">老师</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>角色</label>
+                            <select v-model="userForm.role">
+                                <option value="admin">管理员</option>
+                                <option value="teacher">教师</option>
+                                <option value="student">学生</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div v-if="userForm.userType === 'student'" class="form-group">
+                        <label>关联学生</label>
+                        <select v-model="userForm.studentId">
+                            <option value="">-- 选择学生 --</option>
+                            <option v-for="s in studentList" :key="s.id" :value="s.id">{{ s.name }} ({{ s.studentNo }})</option>
+                        </select>
+                    </div>
+                    <div v-if="userForm.userType === 'teacher'" class="form-group">
+                        <label>关联老师</label>
+                        <select v-model="userForm.teacherId">
+                            <option value="">-- 选择老师 --</option>
+                            <option v-for="t in teacherList" :key="t.id" :value="t.id">{{ t.name }} ({{ t.teacherNo }})</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" @click="closeUserModal">取消</button>
+                    <button class="btn btn-primary" @click="saveUser">保存</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 角色编辑弹窗 -->
+        <div class="modal-overlay" v-if="showRoleModal" @click.self="closeRoleModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>{{ isEditRole ? '编辑角色' : '添加角色' }}</h3>
+                    <button class="modal-close" @click="closeRoleModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>角色代码</label>
+                        <input v-model="roleForm.roleCode" placeholder="请输入角色代码" :disabled="isEditRole">
+                    </div>
+                    <div class="form-group">
+                        <label>角色名称</label>
+                        <input v-model="roleForm.roleName" placeholder="请输入角色名称">
+                    </div>
+                    <div class="form-group">
+                        <label>描述</label>
+                        <textarea v-model="roleForm.description" placeholder="请输入描述" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" @click="closeRoleModal">取消</button>
+                    <button class="btn btn-primary" @click="saveRole">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    const { createApp } = Vue;
+    const API_BASE = '/course/api';
+    
+    // 配置 axios 拦截器
+    axios.interceptors.request.use(config => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            config.headers.Authorization = 'Bearer ' + token;
+        }
+        return config;
+    });
+    
+    createApp({
+        data() {
+            return {
+                nav: 'student',
+                currentMenu: 'student-list',
+                currentUser: 'admin',
+                isAdmin: false,
+                
+                search: { user: '', role: '', student: '', teacher: '', course: '', selection: '' },
+                
+                // 列表数据
+                userList: [],
+                roleList: [],
+                studentList: [],
+                teacherList: [],
+                courseList: [],
+                selectionList: [],
+                allPermissions: [],
+                allTeacherCourses: [],
+                
+                // 学生课程
+                selectedStudentId: '',
+                studentCourseList: [],
+                
+                // 老师课程
+                selectedTeacherId: '',
+                teacherCourseList: [],
+                
+                // 弹窗控制
+                showUserModal: false,
+                showRoleModal: false,
+                showStudentModal: false,
+                showTeacherModal: false,
+                showCourseModal: false,
+                showSelectionModal: false,
+                showAssignModal: false,
+                
+                // 编辑标记
+                isEditUser: false,
+                isEditRole: false,
+                isEditStudent: false,
+                isEditTeacher: false,
+                isEditCourse: false,
+                
+                // 表单数据
+                userForm: { id: '', username: '', password: '', nickname: '', userType: 'student', role: 'student', studentId: '', teacherId: '' },
+                roleForm: { id: '', roleCode: '', roleName: '', description: '' },
+                studentForm: { id: '', studentNo: '', name: '', gender: '男', className: '', major: '', phone: '', email: '' },
+                teacherForm: { id: '', teacherNo: '', name: '', gender: '男', title: '讲师', department: '', phone: '', email: '' },
+                courseForm: { id: '', courseCode: '', courseName: '', credit: 2, hours: 32, courseType: '必修', maxStudents: 50, description: '' },
+                selectionForm: { studentId: '', teacherCourseId: '' },
+                assignForm: { courseId: '', schedule: '', location: '' },
+                
+                // 权限选择
+                selectedRoleId: '',
+                selectedUserId: '',
+                selectedPermissions: [],
+                selectedUserPermissions: []
+            }
+        },
+        computed: {
+            sidebarTitle() {
+                const titles = { 
+                    student: '学生管理', 
+                    teacher: '老师管理', 
+                    course: '课程管理', 
+                    selection: '选课管理',
+                    system: '系统管理'
+                };
+                return titles[this.nav];
+            },
+            sidebarItems() {
+                const menus = {
+                    student: [
+                        { key: 'student-list', name: '📋 学生基本信息管理' }, 
+                        { key: 'student-courses', name: '📚 学生已选课程' }
+                    ],
+                    teacher: [
+                        { key: 'teacher-list', name: '📋 老师基本信息管理' }, 
+                        { key: 'teacher-courses', name: '📖 教授课程管理' }
+                    ],
+                    course: [
+                        { key: 'course-list', name: '📋 课程维护管理' }
+                    ],
+                    selection: [
+                        { key: 'selection-list', name: '📋 学生选课管理' }
+                    ],
+                    system: [
+                        { key: 'user-list', name: '👥 用户管理' },
+                        { key: 'user-permission', name: '🔐 用户权限管理' },
+                        { key: 'role-list', name: '🎭 角色管理' },
+                        { key: 'role-permission', name: '🔑 角色权限管理' }
+                    ]
+                };
+                return menus[this.nav] || [];
+            }
+        },
+        methods: {
+            setNav(nav) {
+                this.nav = nav;
+                this.currentMenu = this.sidebarItems[0]?.key || '';
+                this.loadModuleData();
+            },
+            setMenu(key) {
+                this.currentMenu = key;
+            },
+            
+            async loadModuleData() {
+                if (this.nav === 'student') {
+                    await this.loadStudents();
+                } else if (this.nav === 'teacher') {
+                    await this.loadTeachers();
+                } else if (this.nav === 'course') {
+                    await this.loadCourses();
+                } else if (this.nav === 'selection') {
+                    await Promise.all([this.loadSelections(), this.loadStudents(), this.loadAllTeacherCourses()]);
+                } else if (this.nav === 'system') {
+                    await this.loadSystemData();
+                }
+            },
+            
+            async loadSystemData() {
+                await Promise.all([
+                    this.loadUsers(),
+                    this.loadRoles(),
+                    this.loadPermissions(),
+                    this.loadStudents(),
+                    this.loadTeachers()
+                ]);
+            },
+            
+            // ==================== 学生管理 ====================
+            async loadStudents(keyword = '') {
+                try {
+                    const url = keyword ? `${API_BASE}/student/list?keyword=${keyword}` : `${API_BASE}/student/list`;
+                    const res = await axios.get(url);
+                    this.studentList = res.data.data || [];
+                } catch (e) {
+                    console.error('加载学生失败:', e);
+                }
+            },
+            
+            searchStudents() {
+                this.loadStudents(this.search.student);
+            },
+            
+            openAddStudentModal() {
+                this.isEditStudent = false;
+                this.studentForm = { id: '', studentNo: '', name: '', gender: '男', className: '', major: '', phone: '', email: '' };
+                this.showStudentModal = true;
+            },
+            
+            openEditStudentModal(item) {
+                this.isEditStudent = true;
+                this.studentForm = { ...item };
+                this.showStudentModal = true;
+            },
+            
+            closeStudentModal() {
+                this.showStudentModal = false;
+            },
+            
+            async saveStudent() {
+                try {
+                    await axios.post(`${API_BASE}/student/save`, this.studentForm);
+                    alert('学生保存成功！');
+                    this.closeStudentModal();
+                    this.loadStudents();
+                } catch (e) {
+                    alert('保存失败：' + (e.response?.data?.message || e.message));
+                }
+            },
+            
+            async deleteStudent(id) {
+                if (!confirm('确定删除该学生？')) return;
+                try {
+                    await axios.delete(`${API_BASE}/student/${id}`);
+                    alert('删除成功！');
+                    this.loadStudents();
+                } catch (e) {
+                    alert('删除失败：' + (e.response?.data?.message || e.message));
+                }
+            },
+            
+            async loadStudentCourses() {
+                if (!this.selectedStudentId) {
+                    this.studentCourseList = [];
+                    return;
+                }
+                try {
+                    const res = await axios.get(`${API_BASE}/course-selection/student/${this.selectedStudentId}`);
+                    this.studentCourseList = res.data.data || [];
+                } catch (e) {
+                    console.error('加载学生课程失败:', e);
+                    this.studentCourseList = [];
+                }
+            },
+            
+            // ==================== 老师管理 ====================
+            async loadTeachers(keyword = '') {
+                try {
+                    const url = keyword ? `${API_BASE}/teacher/list?keyword=${keyword}` : `${API_BASE}/teacher/list`;
+                    const res = await axios.get(url);
+                    this.teacherList = res.data.data || [];
+                } catch (e) {
+                    console.error('加载老师失败:', e);
+                }
+            },
+            
+            searchTeachers() {
+                this.loadTeachers(this.search.teacher);
+            },
+            
+            openAddTeacherModal() {
+                this.isEditTeacher = false;
+                this.teacherForm = { id: '', teacherNo: '', name: '', gender: '男', title: '讲师', department: '', phone: '', email: '' };
+                this.showTeacherModal = true;
+            },
+            
+            openEditTeacherModal(item) {
+                this.isEditTeacher = true;
+                this.teacherForm = { ...item };
+                this.showTeacherModal = true;
+            },
+            
+            closeTeacherModal() {
+                this.showTeacherModal = false;
+            },
+            
+            async saveTeacher() {
+                try {
+                    await axios.post(`${API_BASE}/teacher/save`, this.teacherForm);
+                    alert('老师保存成功！');
+                    this.closeTeacherModal();
+                    this.loadTeachers();
+                } catch (e) {
+                    alert('保存失败：' + (e.response?.data?.message || e.message));
+                }
+            },
+            
+            async deleteTeacher(id) {
+                if (!confirm('确定删除该老师？')) return;
+                try {
+                    await axios.delete(`${API_BASE}/teacher/${id}`);
+                    alert('删除成功！');
+                    this.loadTeachers();
+                } catch (e) {
+                    alert('删除失败：' + (e.response?.data?.message || e.message));
+                }
+            },
+            
+            async loadTeacherCourses() {
+                if (!this.selectedTeacherId) {
+                    this.teacherCourseList = [];
+                    return;
+                }
+                try {
+                    const res = await axios.get(`${API_BASE}/teacher-course/teacher/${this.selectedTeacherId}`);
+                    this.teacherCourseList = res.data.data || [];
+                } catch (e) {
+                    console.error('加载老师课程失败:', e);
+                    this.teacherCourseList = [];
+                }
+            },
+            
+            openAssignCourseModal() {
+                this.assignForm = { courseId: '', schedule: '', location: '' };
+                this.showAssignModal = true;
+            },
+            
+            closeAssignModal() {
+                this.showAssignModal = false;
+            },
+            
+            async saveAssign() {
+                try {
+                    await axios.post(`${API_BASE}/teacher-course/assign`, {
+                        teacherId: this.selectedTeacherId,
+                        ...this.assignForm
+                    });
+                    alert('课程分配成功！');
+                    this.closeAssignModal();
+                    this.loadTeacherCourses();
+                } catch (e) {
+                    alert('分配失败：' + (e.response?.data?.message || e.message));
+                }
+            },
+            
+            async removeTeacherCourse(id) {
+                if (!confirm('确定移除该课程？')) return;
+                try {
+                    await axios.delete(`${API_BASE}/teacher-course/${id}`);
+                    alert('移除成功！');
+                    this.loadTeacherCourses();
+                } catch (e) {
+                    alert('移除失败：' + (e.response?.data?.message || e.message));
+                }
+            },
+            
+            // ==================== 课程管理 ====================
+            async loadCourses(keyword = '') {
+                try {
+                    const url = keyword ? `${API_BASE}/course/list?keyword=${keyword}` : `${API_BASE}/course/list`;
+                    const res = await axios.get(url);
+                    this.courseList = res.data.data || [];
+                } catch (e) {
+                    console.error('加载课程失败:', e);
+                }
+            },
+            
+            searchCourses() {
+                this.loadCourses(this.search.course);
+            },
+            
+            openAddCourseModal() {
+                this.isEditCourse = false;
+                this.courseForm = { id: '', courseCode: '', courseName: '', credit: 2, hours: 32, courseType: '必修', maxStudents: 50, description: '' };
+                this.showCourseModal = true;
+            },
+            
+            openEditCourseModal(item) {
+                this.isEditCourse = true;
+                this.courseForm = { ...item };
+                this.showCourseModal = true;
+            },
+            
+            closeCourseModal() {
+                this.showCourseModal = false;
+            },
+            
+            async saveCourse() {
+                try {
+                    await axios.post(`${API_BASE}/course/save`, this.courseForm);
+                    alert('课程保存成功！');
+                    this.closeCourseModal();
+                    this.loadCourses();
+                } catch (e) {
+                    alert('保存失败：' + (e.response?.data?.message || e.message));
+                }
+            },
+            
+            async deleteCourse(id) {
+                if (!confirm('确定删除该课程？')) return;
+                try {
+                    await axios.delete(`${API_BASE}/course/${id}`);
+                    alert('删除成功！');
+                    this.loadCourses();
+                } catch (e) {
+                    alert('删除失败：' + (e.response?.data?.message || e.message));
+                }
+            },
+            
+            // ==================== 选课管理 ====================
+            async loadSelections(keyword = '') {
+                try {
+                    const url = keyword ? `${API_BASE}/course-selection/list?keyword=${keyword}` : `${API_BASE}/course-selection/list`;
+                    const res = await axios.get(url);
+                    this.selectionList = res.data.data || [];
+                } catch (e) {
+                    console.error('加载选课记录失败:', e);
+                }
+            },
+            
+            searchSelections() {
+                this.loadSelections(this.search.selection);
+            },
+            
+            async loadAllTeacherCourses() {
+                try {
+                    const res = await axios.get(`${API_BASE}/teacher-course/list`);
+                    this.allTeacherCourses = res.data.data || [];
+                } catch (e) {
+                    console.error('加载所有课程失败:', e);
+                }
+            },
+            
+            openAddSelectionModal() {
+                this.selectionForm = { studentId: '', teacherCourseId: '' };
+                this.showSelectionModal = true;
+            },
+            
+            closeSelectionModal() {
+                this.showSelectionModal = false;
+            },
+            
+            async saveSelection() {
+                try {
+                    await axios.post(`${API_BASE}/course-selection/select`, this.selectionForm);
+                    alert('选课成功！');
+                    this.closeSelectionModal();
+                    this.loadSelections();
+                } catch (e) {
+                    alert('选课失败：' + (e.response?.data?.message || e.message));
+                }
+            },
+            
+            async cancelSelection(id) {
+                if (!confirm('确定退选该课程？')) return;
+                try {
+                    await axios.delete(`${API_BASE}/course-selection/${id}`);
+                    alert('退选成功！');
+                    this.loadSelections();
+                } catch (e) {
+                    alert('退选失败：' + (e.response?.data?.message || e.message));
+                }
+            },
+            
+            // ==================== 系统管理 ====================
+            async loadUsers(keyword = '') {
+                try {
+                    const url = keyword ? `${API_BASE}/user/list?keyword=${keyword}` : `${API_BASE}/user/list`;
+                    const res = await axios.get(url);
+                    this.userList = res.data.data || [];
+                } catch (e) {
+                    console.error('加载用户失败:', e);
+                }
+            },
+            
+            async loadRoles(keyword = '') {
+                try {
+                    const url = keyword ? `${API_BASE}/role/list?keyword=${keyword}` : `${API_BASE}/role/list`;
+                    const res = await axios.get(url);
+                    this.roleList = res.data.data || [];
+                } catch (e) {
+                    console.error('加载角色失败:', e);
+                }
+            },
+            
+            async loadPermissions() {
+                try {
+                    const res = await axios.get(`${API_BASE}/permission/list`);
+                    this.allPermissions = res.data.data || [];
+                } catch (e) {
+                    console.error('加载权限失败:', e);
+                }
+            },
+            
+            async loadRolePermissions() {
+                if (!this.selectedRoleId) {
+                    this.selectedPermissions = [];
+                    return;
+                }
+                try {
+                    const res = await axios.get(`${API_BASE}/permission/role/${this.selectedRoleId}`);
+                    this.selectedPermissions = (res.data.data || []).map(p => p.id);
+                } catch (e) {
+                    console.error('加载角色权限失败:', e);
+                }
+            },
+            
+            async loadUserPermissions() {
+                if (!this.selectedUserId) {
+                    this.selectedUserPermissions = [];
+                    return;
+                }
+                try {
+                    const res = await axios.get(`${API_BASE}/permission/user/${this.selectedUserId}`);
+                    this.selectedUserPermissions = (res.data.data || []).map(p => p.id);
+                } catch (e) {
+                    console.error('加载用户权限失败:', e);
+                }
+            },
+            
+            async saveRolePermissions() {
+                try {
+                    await axios.post(`${API_BASE}/role/${this.selectedRoleId}/permissions`, {
+                        permissionIds: this.selectedPermissions
+                    });
+                    alert('权限保存成功！');
+                } catch (e) {
+                    alert('权限保存失败：' + (e.response?.data?.message || e.message));
+                }
+            },
+            
+            async saveUserPermissions() {
+                try {
+                    await axios.post(`${API_BASE}/user/${this.selectedUserId}/permissions`, {
+                        permissionIds: this.selectedUserPermissions
+                    });
+                    alert('权限保存成功！');
+                } catch (e) {
+                    alert('权限保存失败：' + (e.response?.data?.message || e.message));
+                }
+            },
+            
+            openAddUserModal() {
+                this.isEditUser = false;
+                this.userForm = { id: '', username: '', password: '', nickname: '', userType: 'student', role: 'student', studentId: '', teacherId: '' };
+                this.showUserModal = true;
+            },
+            
+            openEditUserModal(user) {
+                this.isEditUser = true;
+                this.userForm = { ...user, password: '' };
+                this.showUserModal = true;
+            },
+            
+            closeUserModal() {
+                this.showUserModal = false;
+            },
+            
+            async saveUser() {
+                try {
+                    await axios.post(`${API_BASE}/user/save`, this.userForm);
+                    alert('用户保存成功！');
+                    this.closeUserModal();
+                    this.loadUsers();
+                } catch (e) {
+                    alert('用户保存失败：' + (e.response?.data?.message || e.message));
+                }
+            },
+            
+            async deleteUser(id) {
+                if (!confirm('确定删除？')) return;
+                try {
+                    await axios.delete(`${API_BASE}/user/${id}`);
+                    alert('用户删除成功！');
+                    this.loadUsers();
+                } catch (e) {
+                    alert('用户删除失败：' + (e.response?.data?.message || e.message));
+                }
+            },
+            
+            openAddRoleModal() {
+                this.isEditRole = false;
+                this.roleForm = { id: '', roleCode: '', roleName: '', description: '' };
+                this.showRoleModal = true;
+            },
+            
+            openEditRoleModal(role) {
+                this.isEditRole = true;
+                this.roleForm = { ...role };
+                this.showRoleModal = true;
+            },
+            
+            closeRoleModal() {
+                this.showRoleModal = false;
+            },
+            
+            async saveRole() {
+                try {
+                    await axios.post(`${API_BASE}/role/save`, this.roleForm);
+                    alert('角色保存成功！');
+                    this.closeRoleModal();
+                    this.loadRoles();
+                } catch (e) {
+                    alert('角色保存失败：' + (e.response?.data?.message || e.message));
+                }
+            },
+            
+            async deleteRole(id) {
+                if (!confirm('确定删除？')) return;
+                try {
+                    await axios.delete(`${API_BASE}/role/${id}`);
+                    alert('角色删除成功！');
+                    this.loadRoles();
+                } catch (e) {
+                    alert('角色删除失败：' + (e.response?.data?.message || e.message));
+                }
+            },
+            
+            searchUsers() {
+                this.loadUsers(this.search.user);
+            },
+            
+            searchRoles() {
+                this.loadRoles(this.search.role);
+            },
+            
+            getUserTypeText(type) {
+                const types = { admin: '管理员', student: '学生', teacher: '老师' };
+                return types[type] || type;
+            },
+            
+            onUserTypeChange() {
+                this.userForm.studentId = '';
+                this.userForm.teacherId = '';
+            },
+            
+            showProfile() {
+                alert('当前用户：' + this.currentUser + '\n角色：' + (this.isAdmin ? '管理员' : '普通用户'));
+            },
+            
+            logout() {
+                localStorage.clear();
+                window.location.href = '/course/login.html';
+            },
+            
+            checkLogin() {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    window.location.href = '/course/login.html';
+                    return false;
+                }
+                this.currentUser = localStorage.getItem('nickname') || localStorage.getItem('username') || 'admin';
+                this.isAdmin = localStorage.getItem('role') === 'admin';
+                return true;
+            }
+        },
+        mounted() {
+            if (this.checkLogin()) {
+                this.loadModuleData();
+            }
+        }
+    }).mount('#app');
+    </script>
+</body>
+</html>
